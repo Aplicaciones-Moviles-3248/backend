@@ -9,7 +9,8 @@ public class CoachResourceFromEntityAssembler {
                 entity.getId(),
                 entity.getName(),
                 entity.getExpertise(),
-                entity.getPhone()
+                entity.getPhone(),
+                entity.getUser() != null ? entity.getUser().getId() : null
         );
     }
 }

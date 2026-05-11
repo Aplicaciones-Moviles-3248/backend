@@ -6,8 +6,9 @@ import com.upc.courtly.payments.interfaces.rest.resources.CreatePaymentResource;
 public class CreatePaymentCommandFromResourceAssembler {
     public static CreatePaymentCommand toCommandFromResource(CreatePaymentResource resource) {
         return new CreatePaymentCommand(
-                resource.amount(),
-                resource.userId()
+                resource.userId(),
+                resource.bookingId(),
+                resource.trainingSessionId()
         );
     }
 }

@@ -1,5 +1,7 @@
 package com.upc.courtly.courts.interfaces.rest.resources;
 
-public record UpdateCourtResource(String name, String location, String type) {
+import java.math.BigDecimal;
+
+public record UpdateCourtResource(String name, String location, String type, String imageUrl, BigDecimal pricePerHour) {
 }
 

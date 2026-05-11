@@ -1,6 +1,7 @@
 package com.upc.courtly.notifications.interfaces.rest.transform;
 
 import com.upc.courtly.notifications.domain.model.commands.CreateNotificationCommand;
+import com.upc.courtly.notifications.domain.model.valueobjects.NotificationType;
 import com.upc.courtly.notifications.interfaces.rest.resources.CreateNotificationResource;
 
 public class CreateNotificationCommandFromResourceAssembler {
@@ -8,8 +9,10 @@ public class CreateNotificationCommandFromResourceAssembler {
         return new CreateNotificationCommand(
                 resource.title(),
                 resource.message(),
-                resource.type(),
+                NotificationType.valueOf(resource.type()),
                 resource.isRead(),
+                resource.relatedEntityType(),
+                resource.relatedEntityId(),
                 resource.userId()
         );
     }

@@ -24,7 +24,7 @@ public class Metric {
     @Column(nullable = false)
     private MetricType metricType;
 
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(name = "metric_value", nullable = false, precision = 10, scale = 2)
     private BigDecimal value;
 
     @Column(nullable = false)
@@ -53,5 +53,13 @@ public class Metric {
         this.metricType = metricType;
         this.value = value;
         this.period = period;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

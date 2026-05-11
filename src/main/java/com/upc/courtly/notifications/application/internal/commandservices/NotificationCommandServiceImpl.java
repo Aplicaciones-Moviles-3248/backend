@@ -3,6 +3,7 @@ package com.upc.courtly.notifications.application.internal.commandservices;
 import com.upc.courtly.notifications.domain.model.aggregates.Notification;
 import com.upc.courtly.notifications.domain.model.commands.CreateNotificationCommand;
 import com.upc.courtly.notifications.domain.model.commands.DeleteNotificationCommand;
+import com.upc.courtly.notifications.domain.model.commands.MarkNotificationAsReadCommand;
 import com.upc.courtly.notifications.domain.model.commands.UpdateNotificationCommand;
 import com.upc.courtly.notifications.domain.services.NotificationCommandService;
 import com.upc.courtly.notifications.infrastructure.persistence.jpa.repositories.NotificationRepository;
@@ -24,7 +25,8 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
     @Override
     public Optional<Notification> handle(CreateNotificationCommand command) {
         var user = userProfileRepository.findById(command.userId()).orElseThrow(() -> new IllegalArgumentException("User with id " + command.userId() + " not found"));
-        var notification = new Notification(command.title(), command.message(), command.type(), command.isRead(), user);
+        var notification = new Notification(command.title(), command.message(), command.type(), command.isRead(),
+                command.relatedEntityType(), command.relatedEntityId(), user);
         var createdNotification = notificationRepository.save(notification);
         return Optional.of(createdNotification);
     }
@@ -32,8 +34,17 @@ public class NotificationCommandServiceImpl implements NotificationCommandServic
     @Override
     public Optional<Notification> handle(UpdateNotificationCommand command) {
         return notificationRepository.findById(command.notificationId()).map(notificationToUpdate -> {
-            notificationToUpdate.updateNotification(command.title(), command.message(), command.type(), command.isRead());
+            notificationToUpdate.updateNotification(command.title(), command.message(), command.type(), command.isRead(),
+                    command.relatedEntityType(), command.relatedEntityId());
             return notificationRepository.save(notificationToUpdate);
+        });
+    }
+
+    @Override
+    public Optional<Notification> handle(MarkNotificationAsReadCommand command) {
+        return notificationRepository.findById(command.notificationId()).map(notification -> {
+            notification.markAsRead();
+            return notificationRepository.save(notification);
         });
     }
 

@@ -15,7 +15,10 @@ public class MatchResourceFromEntityAssembler {
                 entity.getCurrentPlayers(),
                 entity.getCreatedAt(),
                 new MatchResource.CourtSummaryResource(entity.getCourt().getId(), entity.getCourt().getName()),
-                new MatchResource.UserSummaryResource(entity.getCreatedBy().getId(), entity.getCreatedBy().getName())
+                new MatchResource.UserSummaryResource(entity.getCreatedBy().getId(), entity.getCreatedBy().getName()),
+                entity.getParticipants().stream()
+                        .map(participant -> new MatchResource.UserSummaryResource(participant.getId(), participant.getName()))
+                        .toList()
         );
     }
 }

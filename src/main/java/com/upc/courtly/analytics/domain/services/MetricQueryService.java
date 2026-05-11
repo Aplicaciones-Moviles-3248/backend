@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface MetricQueryService {
     List<Metric> handle(GetAllMetricsQuery query);
     Optional<Metric> handle(GetMetricByIdQuery query);
+    List<Metric> handleCoachMetrics(Long coachId);
+    Optional<Metric> handleCoachMetric(Long coachId, Long metricId);
 }

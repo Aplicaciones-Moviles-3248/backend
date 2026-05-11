@@ -8,7 +8,9 @@ public class CreateCourtCommandFromResourceAssembler {
         return new CreateCourtCommand(
                 resource.name(),
                 resource.location(),
-                resource.type()
+                resource.type(),
+                resource.imageUrl(),
+                resource.pricePerHour()
         );
     }
 }

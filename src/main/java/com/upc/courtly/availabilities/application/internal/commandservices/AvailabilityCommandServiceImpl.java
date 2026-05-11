@@ -24,6 +24,12 @@ public class AvailabilityCommandServiceImpl implements AvailabilityCommandServic
     @Override
     public Optional<Availability> handle(CreateAvailabilityCommand command) {
         var coach = coachRepository.findById(command.coachId()).orElseThrow(() -> new IllegalArgumentException("Coach with id " + command.coachId() + " not found"));
+        if (command.startTime().compareTo(command.endTime()) >= 0) {
+            throw new IllegalArgumentException("Availability start time must be before end time");
+        }
+        if (availabilityRepository.existsOverlappingAvailability(command.coachId(), command.date(), command.startTime(), command.endTime(), null)) {
+            throw new IllegalArgumentException("Coach already has an overlapping availability in that time range");
+        }
         var availability = new Availability(command.date(), command.startTime(), command.endTime(), command.status(), coach);
         var createdAvailability = availabilityRepository.save(availability);
         return Optional.of(createdAvailability);
@@ -32,6 +38,15 @@ public class AvailabilityCommandServiceImpl implements AvailabilityCommandServic
     @Override
     public Optional<Availability> handle(UpdateAvailabilityCommand command) {
         return availabilityRepository.findById(command.availabilityId()).map(availabilityToUpdate -> {
+            if (availabilityToUpdate.getStatus() == com.upc.courtly.availabilities.domain.model.valueobjects.AvailabilityStatus.RESERVED) {
+                throw new IllegalArgumentException("Reserved availabilities cannot be modified");
+            }
+            if (command.startTime().compareTo(command.endTime()) >= 0) {
+                throw new IllegalArgumentException("Availability start time must be before end time");
+            }
+            if (availabilityRepository.existsOverlappingAvailability(availabilityToUpdate.getCoach().getId(), command.date(), command.startTime(), command.endTime(), availabilityToUpdate.getId())) {
+                throw new IllegalArgumentException("Coach already has an overlapping availability in that time range");
+            }
             availabilityToUpdate.updateAvailability(command.date(), command.startTime(), command.endTime(), command.status());
             return availabilityRepository.save(availabilityToUpdate);
         });
@@ -39,8 +54,10 @@ public class AvailabilityCommandServiceImpl implements AvailabilityCommandServic
 
     @Override
     public void handle(DeleteAvailabilityCommand command) {
-        if (!availabilityRepository.existsById(command.availabilityId())) {
-            throw new IllegalArgumentException("Availability with id " + command.availabilityId() + " not found");
+        var availability = availabilityRepository.findById(command.availabilityId())
+                .orElseThrow(() -> new IllegalArgumentException("Availability with id " + command.availabilityId() + " not found"));
+        if (availability.getStatus() == com.upc.courtly.availabilities.domain.model.valueobjects.AvailabilityStatus.RESERVED) {
+            throw new IllegalArgumentException("Reserved availabilities cannot be deleted");
         }
         availabilityRepository.deleteById(command.availabilityId());
     }

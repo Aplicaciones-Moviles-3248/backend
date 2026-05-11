@@ -1,5 +1,6 @@
 package com.upc.courtly.coaches.interfaces.rest;
 
+import com.upc.courtly.iam.interfaces.acl.AuthenticatedContextFacade;
 import com.upc.courtly.coaches.domain.model.commands.DeleteCoachCommand;
 import com.upc.courtly.coaches.domain.model.queries.GetAllCoachesQuery;
 import com.upc.courtly.coaches.domain.model.queries.GetCoachByIdQuery;
@@ -15,6 +16,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,18 +28,32 @@ import java.util.List;
 public class CoachesController {
     private final CoachCommandService coachCommandService;
     private final CoachQueryService coachQueryService;
+    private final AuthenticatedContextFacade authenticatedContextFacade;
 
-    public CoachesController(CoachCommandService coachCommandService, CoachQueryService coachQueryService) {
+    public CoachesController(CoachCommandService coachCommandService, CoachQueryService coachQueryService,
+                             AuthenticatedContextFacade authenticatedContextFacade) {
         this.coachCommandService = coachCommandService;
         this.coachQueryService = coachQueryService;
+        this.authenticatedContextFacade = authenticatedContextFacade;
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('INSTRUCTOR')")
     public ResponseEntity<CoachResource> createCoach(@RequestBody CreateCoachResource resource) {
+        var currentUser = authenticatedContextFacade.getAuthenticatedUser();
+        if (resource.userId() != null && !resource.userId().equals(currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only create your own coach profile");
+        }
         var command = CreateCoachCommandFromResourceAssembler.toCommandFromResource(resource);
         var coach = coachCommandService.handle(command);
         return coach.map(c -> new ResponseEntity<>(CoachResourceFromEntityAssembler.toResourceFromEntity(c), HttpStatus.CREATED))
                 .orElseGet(() -> ResponseEntity.badRequest().build());
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<CoachResource> getMyCoachProfile() {
+        var coach = authenticatedContextFacade.getAuthenticatedCoachProfile();
+        return ResponseEntity.ok(CoachResourceFromEntityAssembler.toResourceFromEntity(coach));
     }
 
     @GetMapping
@@ -58,7 +75,12 @@ public class CoachesController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
     public ResponseEntity<CoachResource> updateCoach(@PathVariable Long id, @RequestBody UpdateCoachResource resource) {
+        var currentCoach = authenticatedContextFacade.getAuthenticatedCoachProfile();
+        if (!currentCoach.getId().equals(id)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only update your own coach profile");
+        }
         var command = UpdateCoachCommandFromResourceAssembler.toCommandFromResource(id, resource);
         var updatedCoach = coachCommandService.handle(command);
         return updatedCoach.map(c -> ResponseEntity.ok(CoachResourceFromEntityAssembler.toResourceFromEntity(c)))
@@ -66,7 +88,12 @@ public class CoachesController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('INSTRUCTOR')")
     public ResponseEntity<?> deleteCoach(@PathVariable Long id) {
+        var currentCoach = authenticatedContextFacade.getAuthenticatedCoachProfile();
+        if (!currentCoach.getId().equals(id)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own coach profile");
+        }
         var command = new DeleteCoachCommand(id);
         coachCommandService.handle(command);
         return ResponseEntity.ok("Coach deleted successfully.");

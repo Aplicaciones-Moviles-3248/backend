@@ -1,5 +1,6 @@
 package com.upc.courtly.reviews.interfaces.rest;
 
+import com.upc.courtly.iam.interfaces.acl.AuthenticatedContextFacade;
 import com.upc.courtly.reviews.domain.model.commands.DeleteReviewCommand;
 import com.upc.courtly.reviews.domain.model.queries.GetAllReviewsQuery;
 import com.upc.courtly.reviews.domain.model.queries.GetReviewByIdQuery;
@@ -15,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,14 +27,21 @@ import java.util.List;
 public class ReviewsController {
     private final ReviewCommandService reviewCommandService;
     private final ReviewQueryService reviewQueryService;
+    private final AuthenticatedContextFacade authenticatedContextFacade;
 
-    public ReviewsController(ReviewCommandService reviewCommandService, ReviewQueryService reviewQueryService) {
+    public ReviewsController(ReviewCommandService reviewCommandService, ReviewQueryService reviewQueryService,
+                             AuthenticatedContextFacade authenticatedContextFacade) {
         this.reviewCommandService = reviewCommandService;
         this.reviewQueryService = reviewQueryService;
+        this.authenticatedContextFacade = authenticatedContextFacade;
     }
 
     @PostMapping
     public ResponseEntity<ReviewResource> createReview(@RequestBody CreateReviewResource resource) {
+        var currentUserProfile = authenticatedContextFacade.getAuthenticatedUserProfile();
+        if (!currentUserProfile.getId().equals(resource.userId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only create reviews for your own profile");
+        }
         var command = CreateReviewCommandFromResourceAssembler.toCommandFromResource(resource);
         var review = reviewCommandService.handle(command);
         return review.map(r -> new ResponseEntity<>(ReviewResourceFromEntityAssembler.toResourceFromEntity(r), HttpStatus.CREATED))
@@ -59,6 +68,12 @@ public class ReviewsController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ReviewResource> updateReview(@PathVariable Long id, @RequestBody UpdateReviewResource resource) {
+        var currentUserProfile = authenticatedContextFacade.getAuthenticatedUserProfile();
+        var existingReview = reviewQueryService.handle(new GetReviewByIdQuery(id))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found"));
+        if (!existingReview.getUser().getId().equals(currentUserProfile.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only update your own reviews");
+        }
         var command = UpdateReviewCommandFromResourceAssembler.toCommandFromResource(id, resource);
         var updatedReview = reviewCommandService.handle(command);
         return updatedReview.map(r -> ResponseEntity.ok(ReviewResourceFromEntityAssembler.toResourceFromEntity(r)))
@@ -67,6 +82,12 @@ public class ReviewsController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteReview(@PathVariable Long id) {
+        var currentUserProfile = authenticatedContextFacade.getAuthenticatedUserProfile();
+        var existingReview = reviewQueryService.handle(new GetReviewByIdQuery(id))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found"));
+        if (!existingReview.getUser().getId().equals(currentUserProfile.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own reviews");
+        }
         var command = new DeleteReviewCommand(id);
         reviewCommandService.handle(command);
         return ResponseEntity.ok("Review deleted successfully.");

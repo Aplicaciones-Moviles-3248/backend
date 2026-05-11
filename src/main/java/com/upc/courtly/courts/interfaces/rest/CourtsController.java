@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,6 +33,7 @@ public class CourtsController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CourtResource> createCourt(@RequestBody CreateCourtResource resource) {
         var command = CreateCourtCommandFromResourceAssembler.toCommandFromResource(resource);
         var court = courtCommandService.handle(command);
@@ -58,6 +60,7 @@ public class CourtsController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CourtResource> updateCourt(@PathVariable Long id, @RequestBody UpdateCourtResource resource) {
         var command = UpdateCourtCommandFromResourceAssembler.toCommandFromResource(id, resource);
         var updatedCourt = courtCommandService.handle(command);
@@ -66,6 +69,7 @@ public class CourtsController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteCourt(@PathVariable Long id) {
         var command = new DeleteCourtCommand(id);
         courtCommandService.handle(command);

@@ -17,6 +17,7 @@ public class BookingResourceFromEntityAssembler {
                 entity.getId(),
                 entity.getStartTime(),
                 entity.getEndTime(),
+                entity.getStatus(),
                 userSummary,
                 courtSummary
         );
