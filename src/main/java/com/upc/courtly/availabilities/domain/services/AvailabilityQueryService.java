@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface AvailabilityQueryService {
     List<Availability> handle(GetAllAvailabilitiesQuery query);
     Optional<Availability> handle(GetAvailabilityByIdQuery query);
+    List<Availability> handleByCoachUserId(Long userId);
 }

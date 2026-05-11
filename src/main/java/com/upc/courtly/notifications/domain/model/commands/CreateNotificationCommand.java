@@ -1,4 +1,7 @@
 package com.upc.courtly.notifications.domain.model.commands;
 
-public record CreateNotificationCommand(String title, String message, String type, boolean isRead, Long userId) {
+import com.upc.courtly.notifications.domain.model.valueobjects.NotificationType;
+
+public record CreateNotificationCommand(String title, String message, NotificationType type, boolean isRead,
+                                        String relatedEntityType, Long relatedEntityId, Long userId) {
 }

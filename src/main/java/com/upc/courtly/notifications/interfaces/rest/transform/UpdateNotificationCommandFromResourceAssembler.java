@@ -1,6 +1,7 @@
 package com.upc.courtly.notifications.interfaces.rest.transform;
 
 import com.upc.courtly.notifications.domain.model.commands.UpdateNotificationCommand;
+import com.upc.courtly.notifications.domain.model.valueobjects.NotificationType;
 import com.upc.courtly.notifications.interfaces.rest.resources.UpdateNotificationResource;
 
 public class UpdateNotificationCommandFromResourceAssembler {
@@ -9,8 +10,10 @@ public class UpdateNotificationCommandFromResourceAssembler {
                 notificationId,
                 resource.title(),
                 resource.message(),
-                resource.type(),
-                resource.isRead()
+                NotificationType.valueOf(resource.type()),
+                resource.isRead(),
+                resource.relatedEntityType(),
+                resource.relatedEntityId()
         );
     }
 }

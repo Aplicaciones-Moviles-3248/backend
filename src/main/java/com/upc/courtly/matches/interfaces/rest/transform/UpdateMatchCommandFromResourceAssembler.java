@@ -12,8 +12,7 @@ public class UpdateMatchCommandFromResourceAssembler {
                 resource.description(),
                 resource.dateTime(),
                 MatchStatus.valueOf(resource.status()),
-                resource.maxPlayers(),
-                resource.currentPlayers()
+                resource.maxPlayers()
         );
     }
 }

@@ -1,6 +1,9 @@
 package com.upc.courtly.payments.domain.model.aggregates;
 
+import com.upc.courtly.bookings.domain.model.aggregates.Booking;
 import com.upc.courtly.payments.domain.model.valueobjects.PaymentStatus;
+import com.upc.courtly.payments.domain.model.valueobjects.PaymentContextType;
+import com.upc.courtly.trainingsessions.domain.model.aggregates.TrainingSession;
 import com.upc.courtly.users.domain.model.aggregates.UserProfile;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -30,6 +33,18 @@ public class Payment {
     @Column(nullable = false)
     private PaymentStatus paymentStatus;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PaymentContextType contextType;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_id")
+    private Booking booking;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "training_session_id")
+    private TrainingSession trainingSession;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -39,9 +54,16 @@ public class Payment {
     }
 
     public Payment(BigDecimal amount, UserProfile user) {
+        this(amount, user, null, null);
+    }
+
+    public Payment(BigDecimal amount, UserProfile user, Booking booking, TrainingSession trainingSession) {
         this.amount = amount;
         this.user = user;
-        this.paymentStatus = PaymentStatus.PENDING; // Status por defecto
+        this.booking = booking;
+        this.trainingSession = trainingSession;
+        this.contextType = trainingSession != null ? PaymentContextType.TRAINING_SESSION : PaymentContextType.BOOKING;
+        this.paymentStatus = PaymentStatus.COMPLETED;
     }
 
     // Método para obtener la fecha de pago (usa createdAt)

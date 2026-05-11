@@ -9,7 +9,9 @@ public class CourtResourceFromEntityAssembler {
                 entity.getId(),
                 entity.getName(),
                 entity.getLocation(),
-                entity.getType()
+                entity.getType(),
+                entity.getImageUrl(),
+                entity.getPricePerHour()
         );
     }
 }

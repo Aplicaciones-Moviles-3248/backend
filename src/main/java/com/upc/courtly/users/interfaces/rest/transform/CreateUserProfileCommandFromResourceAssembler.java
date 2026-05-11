@@ -8,7 +8,9 @@ public class CreateUserProfileCommandFromResourceAssembler {
         return new CreateUserProfileCommand(
                 resource.name(),
                 resource.email(),
-                resource.phone()
+                resource.phone(),
+                resource.imageUrl(),
+                resource.userId()
         );
     }
 }

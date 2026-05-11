@@ -1,5 +1,7 @@
 package com.upc.courtly.courts.domain.model.commands;
 
-public record CreateCourtCommand(String name, String location, String type) {
+import java.math.BigDecimal;
+
+public record CreateCourtCommand(String name, String location, String type, String imageUrl, BigDecimal pricePerHour) {
 }
 

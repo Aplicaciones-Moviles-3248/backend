@@ -1,0 +1,13 @@
+package com.upc.courtly.notifications.domain.model.valueobjects;
+
+public enum NotificationType {
+    BOOKING_CREATED,
+    BOOKING_CONFIRMED,
+    BOOKING_CANCELLED,
+    TRAINING_SESSION_REQUESTED,
+    TRAINING_SESSION_ACCEPTED,
+    TRAINING_SESSION_REJECTED,
+    TRAINING_SESSION_CANCELLED,
+    PAYMENT_CONFIRMED,
+    REVIEW_ENABLED
+}

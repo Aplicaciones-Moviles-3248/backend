@@ -2,6 +2,6 @@ package com.upc.courtly.bookings.interfaces.rest.resources;
 
 import java.time.LocalDateTime;
 
-public record UpdateBookingResource(LocalDateTime startTime, LocalDateTime endTime) {
+public record UpdateBookingResource(LocalDateTime startTime, LocalDateTime endTime, String status) {
 }
 

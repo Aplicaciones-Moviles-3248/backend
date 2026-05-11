@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "matches")
@@ -47,6 +49,12 @@ public class Match {
     @JoinColumn(name = "created_by_user_id", nullable = false)
     private UserProfile createdBy;
 
+    @ManyToMany
+    @JoinTable(name = "match_participants",
+            joinColumns = @JoinColumn(name = "match_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_profile_id"))
+    private Set<UserProfile> participants = new LinkedHashSet<>();
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -64,6 +72,7 @@ public class Match {
         this.currentPlayers = currentPlayers;
         this.court = court;
         this.createdBy = createdBy;
+        this.participants.add(createdBy);
     }
 
     public void updateMatch(String title, String description, LocalDateTime dateTime, MatchStatus status, Integer maxPlayers, Integer currentPlayers) {
@@ -73,5 +82,30 @@ public class Match {
         this.status = status;
         this.maxPlayers = maxPlayers;
         this.currentPlayers = currentPlayers;
+    }
+
+    public boolean hasParticipant(UserProfile userProfile) {
+        return this.participants.stream().anyMatch(participant -> participant.getId().equals(userProfile.getId()));
+    }
+
+    public void join(UserProfile userProfile) {
+        if (hasParticipant(userProfile)) {
+            throw new IllegalArgumentException("User is already participating in this match");
+        }
+        if (this.status == MatchStatus.CANCELLED || this.status == MatchStatus.COMPLETED) {
+            throw new IllegalArgumentException("This match is not open for new participants");
+        }
+        if (this.currentPlayers >= this.maxPlayers) {
+            throw new IllegalArgumentException("This match has no available slots");
+        }
+        this.participants.add(userProfile);
+        recomputeStatus();
+    }
+
+    public void recomputeStatus() {
+        this.currentPlayers = this.participants.size();
+        if (this.status != MatchStatus.CANCELLED && this.status != MatchStatus.COMPLETED) {
+            this.status = this.currentPlayers >= this.maxPlayers ? MatchStatus.FULL : MatchStatus.OPEN;
+        }
     }
 }

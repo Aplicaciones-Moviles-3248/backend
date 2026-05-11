@@ -22,7 +22,10 @@ public class CourtCommandServiceImpl implements CourtCommandService {
         if (courtRepository.existsByName(command.name())) {
             throw new IllegalArgumentException("Court with name " + command.name() + " already exists");
         }
-        var court = new Court(command.name(), command.location(), command.type());
+        if (command.pricePerHour() == null || command.pricePerHour().signum() <= 0) {
+            throw new IllegalArgumentException("Court price per hour must be greater than zero");
+        }
+        var court = new Court(command.name(), command.location(), command.type(), command.imageUrl(), command.pricePerHour());
         var createdCourt = courtRepository.save(court);
         return Optional.of(createdCourt);
     }
@@ -30,7 +33,10 @@ public class CourtCommandServiceImpl implements CourtCommandService {
     @Override
     public Optional<Court> handle(UpdateCourtCommand command) {
         return courtRepository.findById(command.courtId()).map(courtToUpdate -> {
-            courtToUpdate.updateCourt(command.name(), command.location(), command.type());
+            if (command.pricePerHour() == null || command.pricePerHour().signum() <= 0) {
+                throw new IllegalArgumentException("Court price per hour must be greater than zero");
+            }
+            courtToUpdate.updateCourt(command.name(), command.location(), command.type(), command.imageUrl(), command.pricePerHour());
             return courtRepository.save(courtToUpdate);
         });
     }

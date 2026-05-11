@@ -4,6 +4,7 @@ import com.upc.courtly.iam.infrastructure.authorization.sfs.pipeline.BearerAutho
 import com.upc.courtly.iam.infrastructure.hashing.bcrypt.BCryptHashingService;
 import com.upc.courtly.iam.infrastructure.tokens.jwt.BearerTokenService;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,9 +18,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.cors.CorsConfiguration;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Web Security Configuration.
@@ -40,6 +44,8 @@ public class WebSecurityConfiguration {
     private final BCryptHashingService hashingService;
 
     private final AuthenticationEntryPoint unauthorizedRequestHandler;
+
+    private final String allowedOrigins;
 
     /**
      * This method creates the Bearer Authorization Request Filter.
@@ -94,7 +100,10 @@ public class WebSecurityConfiguration {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.cors(configurer -> configurer.configurationSource(request -> {
             var cors = new CorsConfiguration();
-            cors.setAllowedOrigins(List.of("*"));
+            cors.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
+                    .map(String::trim)
+                    .filter(origin -> !origin.isBlank())
+                    .collect(Collectors.toList()));
             cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
             cors.setAllowedHeaders(List.of("*"));
             return cors;
@@ -106,16 +115,16 @@ public class WebSecurityConfiguration {
                     .requestMatchers(
                         "/api/v1/authentication/**",
                         "/api/v1/auth/**",
-                                "/api/v1/users/**",
-                                "/api/v1/courts/**",
-                                "/api/v1/coaches/**",
-                                "/api/v1/bookings/**",
-                                "/api/v1/payments/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/swagger-resources/**",
                                 "/webjars/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/courts", "/api/v1/courts/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/coaches", "/api/v1/coaches/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/reviews", "/api/v1/reviews/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/availabilities", "/api/v1/availabilities/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/matches", "/api/v1/matches/*").permitAll()
                         .anyRequest().authenticated());
         http.authenticationProvider(authenticationProvider());
         http.addFilterBefore(authorizationRequestFilter(), UsernamePasswordAuthenticationFilter.class);
@@ -130,10 +139,15 @@ public class WebSecurityConfiguration {
      * @param hashingService The hashing service
      * @param authenticationEntryPoint The authentication entry point
      */
-    public WebSecurityConfiguration(@Qualifier("defaultUserDetailsService") UserDetailsService userDetailsService, BearerTokenService tokenService, BCryptHashingService hashingService, AuthenticationEntryPoint authenticationEntryPoint) {
+    public WebSecurityConfiguration(@Qualifier("defaultUserDetailsService") UserDetailsService userDetailsService,
+                                    BearerTokenService tokenService,
+                                    BCryptHashingService hashingService,
+                                    AuthenticationEntryPoint authenticationEntryPoint,
+                                    @Value("${app.cors.allowed-origins:http://localhost:3000,http://127.0.0.1:3000,http://localhost:8081,http://127.0.0.1:8081,http://localhost:10000}") String allowedOrigins) {
         this.userDetailsService = userDetailsService;
         this.tokenService = tokenService;
         this.hashingService = hashingService;
         this.unauthorizedRequestHandler = authenticationEntryPoint;
+        this.allowedOrigins = allowedOrigins;
     }
 }

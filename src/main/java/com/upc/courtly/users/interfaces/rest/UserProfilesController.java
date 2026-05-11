@@ -1,5 +1,6 @@
 package com.upc.courtly.users.interfaces.rest;
 
+import com.upc.courtly.iam.interfaces.acl.AuthenticatedContextFacade;
 import com.upc.courtly.users.domain.model.commands.DeleteUserProfileCommand;
 import com.upc.courtly.users.domain.model.queries.GetAllUserProfilesQuery;
 import com.upc.courtly.users.domain.model.queries.GetUserProfileByIdQuery;
@@ -15,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,18 +27,32 @@ import java.util.List;
 public class UserProfilesController {
     private final UserProfileCommandService userProfileCommandService;
     private final UserProfileQueryService userProfileQueryService;
+    private final AuthenticatedContextFacade authenticatedContextFacade;
 
-    public UserProfilesController(UserProfileCommandService userProfileCommandService, UserProfileQueryService userProfileQueryService) {
+    public UserProfilesController(UserProfileCommandService userProfileCommandService,
+                                  UserProfileQueryService userProfileQueryService,
+                                  AuthenticatedContextFacade authenticatedContextFacade) {
         this.userProfileCommandService = userProfileCommandService;
         this.userProfileQueryService = userProfileQueryService;
+        this.authenticatedContextFacade = authenticatedContextFacade;
     }
 
     @PostMapping
     public ResponseEntity<UserProfileResource> createUserProfile(@RequestBody CreateUserProfileResource resource) {
+        var currentUser = authenticatedContextFacade.getAuthenticatedUser();
+        if (resource.userId() != null && !resource.userId().equals(currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only create your own profile");
+        }
         var command = CreateUserProfileCommandFromResourceAssembler.toCommandFromResource(resource);
         var userProfile = userProfileCommandService.handle(command);
         return userProfile.map(profile -> new ResponseEntity<>(UserProfileResourceFromEntityAssembler.toResourceFromEntity(profile), HttpStatus.CREATED))
                 .orElseGet(() -> ResponseEntity.badRequest().build());
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserProfileResource> getMyUserProfile() {
+        var currentUserProfile = authenticatedContextFacade.getAuthenticatedUserProfile();
+        return ResponseEntity.ok(UserProfileResourceFromEntityAssembler.toResourceFromEntity(currentUserProfile));
     }
 
     @GetMapping
@@ -51,6 +67,10 @@ public class UserProfilesController {
 
     @GetMapping("/{id}")
     public ResponseEntity<UserProfileResource> getUserProfileById(@PathVariable Long id) {
+        var currentUserProfile = authenticatedContextFacade.getAuthenticatedUserProfile();
+        if (!currentUserProfile.getId().equals(id)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only access your own profile");
+        }
         var query = new GetUserProfileByIdQuery(id);
         var userProfile = userProfileQueryService.handle(query);
         return userProfile.map(profile -> ResponseEntity.ok(UserProfileResourceFromEntityAssembler.toResourceFromEntity(profile)))
@@ -59,6 +79,10 @@ public class UserProfilesController {
 
     @PutMapping("/{id}")
     public ResponseEntity<UserProfileResource> updateUserProfile(@PathVariable Long id, @RequestBody UpdateUserProfileResource resource) {
+        var currentUserProfile = authenticatedContextFacade.getAuthenticatedUserProfile();
+        if (!currentUserProfile.getId().equals(id)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only update your own profile");
+        }
         var command = UpdateUserProfileCommandFromResourceAssembler.toCommandFromResource(id, resource);
         var updatedUserProfile = userProfileCommandService.handle(command);
         return updatedUserProfile.map(profile -> ResponseEntity.ok(UserProfileResourceFromEntityAssembler.toResourceFromEntity(profile)))
@@ -67,6 +91,10 @@ public class UserProfilesController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUserProfile(@PathVariable Long id) {
+        var currentUserProfile = authenticatedContextFacade.getAuthenticatedUserProfile();
+        if (!currentUserProfile.getId().equals(id)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own profile");
+        }
         var command = new DeleteUserProfileCommand(id);
         userProfileCommandService.handle(command);
         return ResponseEntity.ok("User deleted successfully.");

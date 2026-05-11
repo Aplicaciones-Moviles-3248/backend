@@ -12,6 +12,8 @@ public class ReviewResourceFromEntityAssembler {
                 entity.getType(),
                 entity.getTargetId(),
                 entity.getTargetType().name(),
+                entity.getBookingId(),
+                entity.getTrainingSessionId(),
                 entity.getCreatedAt(),
                 new ReviewResource.UserSummaryResource(entity.getUser().getId(), entity.getUser().getName())
         );

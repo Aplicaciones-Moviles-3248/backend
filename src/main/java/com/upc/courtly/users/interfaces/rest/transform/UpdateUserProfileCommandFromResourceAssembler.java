@@ -9,7 +9,8 @@ public class UpdateUserProfileCommandFromResourceAssembler {
                 userId,
                 resource.name(),
                 resource.email(),
-                resource.phone()
+                resource.phone(),
+                resource.imageUrl()
         );
     }
 }

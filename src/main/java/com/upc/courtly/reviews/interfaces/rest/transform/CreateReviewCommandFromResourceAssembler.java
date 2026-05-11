@@ -12,7 +12,9 @@ public class CreateReviewCommandFromResourceAssembler {
                 resource.type(),
                 resource.targetId(),
                 ReviewTargetType.valueOf(resource.targetType()),
-                resource.userId()
+                resource.userId(),
+                resource.bookingId(),
+                resource.trainingSessionId()
         );
     }
 }
