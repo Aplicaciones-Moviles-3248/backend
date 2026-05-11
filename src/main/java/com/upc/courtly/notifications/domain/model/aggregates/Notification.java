@@ -1,5 +1,6 @@
 package com.upc.courtly.notifications.domain.model.aggregates;
 
+import com.upc.courtly.notifications.domain.model.valueobjects.NotificationType;
 import com.upc.courtly.users.domain.model.aggregates.UserProfile;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -24,11 +25,18 @@ public class Notification {
     @Column(nullable = false)
     private String message;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String type;
+    private NotificationType type;
 
     @Column(nullable = false)
     private boolean isRead;
+
+    @Column
+    private String relatedEntityType;
+
+    @Column
+    private Long relatedEntityId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -42,18 +50,28 @@ public class Notification {
         createdAt = LocalDateTime.now();
     }
 
-    public Notification(String title, String message, String type, boolean isRead, UserProfile user) {
+    public Notification(String title, String message, NotificationType type, boolean isRead,
+                        String relatedEntityType, Long relatedEntityId, UserProfile user) {
         this.title = title;
         this.message = message;
         this.type = type;
         this.isRead = isRead;
+        this.relatedEntityType = relatedEntityType;
+        this.relatedEntityId = relatedEntityId;
         this.user = user;
     }
 
-    public void updateNotification(String title, String message, String type, boolean isRead) {
+    public void updateNotification(String title, String message, NotificationType type, boolean isRead,
+                                   String relatedEntityType, Long relatedEntityId) {
         this.title = title;
         this.message = message;
         this.type = type;
         this.isRead = isRead;
+        this.relatedEntityType = relatedEntityType;
+        this.relatedEntityId = relatedEntityId;
+    }
+
+    public void markAsRead() {
+        this.isRead = true;
     }
 }

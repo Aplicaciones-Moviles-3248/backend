@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "courts")
 @Getter
@@ -24,15 +26,25 @@ public class Court {
     @Column(nullable = false)
     private String type;
 
-    public Court(String name, String location, String type) {
+    @Column(name = "image_url")
+    private String imageUrl;
+
+    @Column(name = "price_per_hour", nullable = false, precision = 10, scale = 2)
+    private BigDecimal pricePerHour;
+
+    public Court(String name, String location, String type, String imageUrl, BigDecimal pricePerHour) {
         this.name = name;
         this.location = location;
         this.type = type;
+        this.imageUrl = imageUrl;
+        this.pricePerHour = pricePerHour;
     }
 
-    public void updateCourt(String name, String location, String type) {
+    public void updateCourt(String name, String location, String type, String imageUrl, BigDecimal pricePerHour) {
         this.name = name;
         this.location = location;
         this.type = type;
+        this.imageUrl = imageUrl;
+        this.pricePerHour = pricePerHour;
     }
 }

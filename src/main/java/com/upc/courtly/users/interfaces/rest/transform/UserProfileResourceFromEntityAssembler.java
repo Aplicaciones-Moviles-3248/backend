@@ -9,7 +9,9 @@ public class UserProfileResourceFromEntityAssembler {
                 entity.getId(),
                 entity.getName(),
                 entity.getEmail(),
-                entity.getPhone()
+                entity.getPhone(),
+                entity.getImageUrl(),
+                entity.getUser() != null ? entity.getUser().getId() : null
         );
     }
 }

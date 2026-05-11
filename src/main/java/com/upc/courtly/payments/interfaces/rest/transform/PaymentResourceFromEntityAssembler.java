@@ -14,6 +14,9 @@ public class PaymentResourceFromEntityAssembler {
                 entity.getAmount(),
                 entity.getPaymentDate(),
                 entity.getStatus(),
+                entity.getContextType(),
+                entity.getBooking() != null ? entity.getBooking().getId() : null,
+                entity.getTrainingSession() != null ? entity.getTrainingSession().getId() : null,
                 userSummary
         );
     }

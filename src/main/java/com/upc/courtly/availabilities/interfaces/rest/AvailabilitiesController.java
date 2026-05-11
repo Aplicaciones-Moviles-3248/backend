@@ -1,5 +1,6 @@
 package com.upc.courtly.availabilities.interfaces.rest;
 
+import com.upc.courtly.iam.interfaces.acl.AuthenticatedContextFacade;
 import com.upc.courtly.availabilities.domain.model.commands.DeleteAvailabilityCommand;
 import com.upc.courtly.availabilities.domain.model.queries.GetAllAvailabilitiesQuery;
 import com.upc.courtly.availabilities.domain.model.queries.GetAvailabilityByIdQuery;
@@ -15,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,14 +27,22 @@ import java.util.List;
 public class AvailabilitiesController {
     private final AvailabilityCommandService availabilityCommandService;
     private final AvailabilityQueryService availabilityQueryService;
+    private final AuthenticatedContextFacade authenticatedContextFacade;
 
-    public AvailabilitiesController(AvailabilityCommandService availabilityCommandService, AvailabilityQueryService availabilityQueryService) {
+    public AvailabilitiesController(AvailabilityCommandService availabilityCommandService,
+                                    AvailabilityQueryService availabilityQueryService,
+                                    AuthenticatedContextFacade authenticatedContextFacade) {
         this.availabilityCommandService = availabilityCommandService;
         this.availabilityQueryService = availabilityQueryService;
+        this.authenticatedContextFacade = authenticatedContextFacade;
     }
 
     @PostMapping
     public ResponseEntity<AvailabilityResource> createAvailability(@RequestBody CreateAvailabilityResource resource) {
+        var currentCoach = authenticatedContextFacade.getAuthenticatedCoachProfile();
+        if (!currentCoach.getId().equals(resource.coachId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only create availabilities for your own coach profile");
+        }
         var command = CreateAvailabilityCommandFromResourceAssembler.toCommandFromResource(resource);
         var availability = availabilityCommandService.handle(command);
         return availability.map(a -> new ResponseEntity<>(AvailabilityResourceFromEntityAssembler.toResourceFromEntity(a), HttpStatus.CREATED))
@@ -49,6 +59,15 @@ public class AvailabilitiesController {
         return ResponseEntity.ok(availabilityResources);
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<List<AvailabilityResource>> getMyAvailabilities() {
+        var currentCoach = authenticatedContextFacade.getAuthenticatedCoachProfile();
+        var availabilityResources = availabilityQueryService.handleByCoachUserId(currentCoach.getUser().getId()).stream()
+                .map(AvailabilityResourceFromEntityAssembler::toResourceFromEntity)
+                .toList();
+        return ResponseEntity.ok(availabilityResources);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<AvailabilityResource> getAvailabilityById(@PathVariable Long id) {
         var query = new GetAvailabilityByIdQuery(id);
@@ -59,6 +78,12 @@ public class AvailabilitiesController {
 
     @PutMapping("/{id}")
     public ResponseEntity<AvailabilityResource> updateAvailability(@PathVariable Long id, @RequestBody UpdateAvailabilityResource resource) {
+        var currentCoach = authenticatedContextFacade.getAuthenticatedCoachProfile();
+        var existingAvailability = availabilityQueryService.handle(new GetAvailabilityByIdQuery(id))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Availability not found"));
+        if (!existingAvailability.getCoach().getId().equals(currentCoach.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only update your own availabilities");
+        }
         var command = UpdateAvailabilityCommandFromResourceAssembler.toCommandFromResource(id, resource);
         var updatedAvailability = availabilityCommandService.handle(command);
         return updatedAvailability.map(a -> ResponseEntity.ok(AvailabilityResourceFromEntityAssembler.toResourceFromEntity(a)))
@@ -67,6 +92,12 @@ public class AvailabilitiesController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteAvailability(@PathVariable Long id) {
+        var currentCoach = authenticatedContextFacade.getAuthenticatedCoachProfile();
+        var existingAvailability = availabilityQueryService.handle(new GetAvailabilityByIdQuery(id))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Availability not found"));
+        if (!existingAvailability.getCoach().getId().equals(currentCoach.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own availabilities");
+        }
         var command = new DeleteAvailabilityCommand(id);
         availabilityCommandService.handle(command);
         return ResponseEntity.ok("Availability deleted successfully.");

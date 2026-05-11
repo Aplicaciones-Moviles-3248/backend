@@ -27,4 +27,9 @@ public class AvailabilityQueryServiceImpl implements AvailabilityQueryService {
     public Optional<Availability> handle(GetAvailabilityByIdQuery query) {
         return availabilityRepository.findById(query.availabilityId());
     }
+
+    @Override
+    public List<Availability> handleByCoachUserId(Long userId) {
+        return availabilityRepository.findByCoachUserIdOrderByDateAscStartTimeAsc(userId);
+    }
 }

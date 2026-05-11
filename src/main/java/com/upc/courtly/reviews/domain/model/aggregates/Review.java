@@ -35,6 +35,12 @@ public class Review {
     @Column(nullable = false)
     private ReviewTargetType targetType;
 
+    @Column
+    private Long bookingId;
+
+    @Column
+    private Long trainingSessionId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private UserProfile user;
@@ -47,12 +53,15 @@ public class Review {
         createdAt = LocalDateTime.now();
     }
 
-    public Review(Integer score, String comment, String type, Long targetId, ReviewTargetType targetType, UserProfile user) {
+    public Review(Integer score, String comment, String type, Long targetId, ReviewTargetType targetType,
+                  Long bookingId, Long trainingSessionId, UserProfile user) {
         this.score = score;
         this.comment = comment;
         this.type = type;
         this.targetId = targetId;
         this.targetType = targetType;
+        this.bookingId = bookingId;
+        this.trainingSessionId = trainingSessionId;
         this.user = user;
     }
 

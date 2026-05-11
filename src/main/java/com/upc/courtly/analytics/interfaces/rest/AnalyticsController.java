@@ -1,20 +1,13 @@
 package com.upc.courtly.analytics.interfaces.rest;
 
-import com.upc.courtly.analytics.domain.model.commands.DeleteMetricCommand;
-import com.upc.courtly.analytics.domain.model.queries.GetAllMetricsQuery;
-import com.upc.courtly.analytics.domain.model.queries.GetMetricByIdQuery;
-import com.upc.courtly.analytics.domain.services.MetricCommandService;
+import com.upc.courtly.iam.interfaces.acl.AuthenticatedContextFacade;
 import com.upc.courtly.analytics.domain.services.MetricQueryService;
-import com.upc.courtly.analytics.interfaces.rest.resources.CreateMetricResource;
 import com.upc.courtly.analytics.interfaces.rest.resources.MetricResource;
-import com.upc.courtly.analytics.interfaces.rest.resources.UpdateMetricResource;
-import com.upc.courtly.analytics.interfaces.rest.transform.CreateMetricCommandFromResourceAssembler;
 import com.upc.courtly.analytics.interfaces.rest.transform.MetricResourceFromEntityAssembler;
-import com.upc.courtly.analytics.interfaces.rest.transform.UpdateMetricCommandFromResourceAssembler;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,52 +16,55 @@ import java.util.List;
 @RequestMapping(value = "/api/v1/analytics", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Analytics", description = "Analytics Management Endpoints")
 public class AnalyticsController {
-    private final MetricCommandService metricCommandService;
     private final MetricQueryService metricQueryService;
+    private final AuthenticatedContextFacade authenticatedContextFacade;
 
-    public AnalyticsController(MetricCommandService metricCommandService, MetricQueryService metricQueryService) {
-        this.metricCommandService = metricCommandService;
+    public AnalyticsController(MetricQueryService metricQueryService,
+                               AuthenticatedContextFacade authenticatedContextFacade) {
         this.metricQueryService = metricQueryService;
-    }
-
-    @PostMapping
-    public ResponseEntity<MetricResource> createMetric(@RequestBody CreateMetricResource resource) {
-        var command = CreateMetricCommandFromResourceAssembler.toCommandFromResource(resource);
-        var metric = metricCommandService.handle(command);
-        return metric.map(m -> new ResponseEntity<>(MetricResourceFromEntityAssembler.toResourceFromEntity(m), HttpStatus.CREATED))
-                .orElseGet(() -> ResponseEntity.badRequest().build());
+        this.authenticatedContextFacade = authenticatedContextFacade;
     }
 
     @GetMapping
     public ResponseEntity<List<MetricResource>> getAllMetrics() {
-        var query = new GetAllMetricsQuery();
-        var metrics = metricQueryService.handle(query);
+        var currentCoach = authenticatedContextFacade.getAuthenticatedCoachProfile();
+        var metrics = metricQueryService.handleCoachMetrics(currentCoach.getId());
         var metricResources = metrics.stream()
                 .map(MetricResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
         return ResponseEntity.ok(metricResources);
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<List<MetricResource>> getMyMetrics() {
+        return getAllMetrics();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<MetricResource> getMetricById(@PathVariable Long id) {
-        var query = new GetMetricByIdQuery(id);
-        var metric = metricQueryService.handle(query);
+        var currentCoach = authenticatedContextFacade.getAuthenticatedCoachProfile();
+        var metric = metricQueryService.handleCoachMetric(currentCoach.getId(), id);
         return metric.map(m -> ResponseEntity.ok(MetricResourceFromEntityAssembler.toResourceFromEntity(m)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @PostMapping
+    public ResponseEntity<?> createMetric() {
+        return rejectManualMutation();
+    }
+
     @PutMapping("/{id}")
-    public ResponseEntity<MetricResource> updateMetric(@PathVariable Long id, @RequestBody UpdateMetricResource resource) {
-        var command = UpdateMetricCommandFromResourceAssembler.toCommandFromResource(id, resource);
-        var updatedMetric = metricCommandService.handle(command);
-        return updatedMetric.map(m -> ResponseEntity.ok(MetricResourceFromEntityAssembler.toResourceFromEntity(m)))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<?> updateMetric(@PathVariable Long id) {
+        return rejectManualMutation();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteMetric(@PathVariable Long id) {
-        var command = new DeleteMetricCommand(id);
-        metricCommandService.handle(command);
-        return ResponseEntity.ok("Metric deleted successfully.");
+        return rejectManualMutation();
+    }
+
+    private ResponseEntity<?> rejectManualMutation() {
+        throw new ResponseStatusException(org.springframework.http.HttpStatus.METHOD_NOT_ALLOWED,
+                "Metrics are derived from completed business operations and cannot be modified manually");
     }
 }

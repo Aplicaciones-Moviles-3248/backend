@@ -11,6 +11,8 @@ public class NotificationResourceFromEntityAssembler {
                 entity.getMessage(),
                 entity.getType(),
                 entity.isRead(),
+                entity.getRelatedEntityType(),
+                entity.getRelatedEntityId(),
                 entity.getCreatedAt(),
                 new NotificationResource.UserSummaryResource(entity.getUser().getId(), entity.getUser().getName())
         );

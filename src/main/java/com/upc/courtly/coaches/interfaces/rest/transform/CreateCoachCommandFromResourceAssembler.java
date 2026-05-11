@@ -8,7 +8,8 @@ public class CreateCoachCommandFromResourceAssembler {
         return new CreateCoachCommand(
                 resource.name(),
                 resource.expertise(),
-                resource.phone()
+                resource.phone(),
+                resource.userId()
         );
     }
 }

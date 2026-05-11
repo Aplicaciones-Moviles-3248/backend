@@ -1,5 +1,6 @@
 package com.upc.courtly.bookings.domain.model.aggregates;
 
+import com.upc.courtly.bookings.domain.model.valueobjects.BookingStatus;
 import com.upc.courtly.courts.domain.model.aggregates.Court;
 import com.upc.courtly.users.domain.model.aggregates.UserProfile;
 import jakarta.persistence.*;
@@ -32,6 +33,10 @@ public class Booking {
     @JoinColumn(name = "court_id", nullable = false)
     private Court court;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private BookingStatus status;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -45,10 +50,23 @@ public class Booking {
         this.endTime = endTime;
         this.user = user;
         this.court = court;
+        this.status = BookingStatus.PENDING_PAYMENT;
     }
 
     public void updateBooking(LocalDateTime startTime, LocalDateTime endTime) {
         this.startTime = startTime;
         this.endTime = endTime;
+    }
+
+    public void confirm() {
+        this.status = BookingStatus.CONFIRMED;
+    }
+
+    public void cancel() {
+        this.status = BookingStatus.CANCELLED;
+    }
+
+    public void complete() {
+        this.status = BookingStatus.COMPLETED;
     }
 }
