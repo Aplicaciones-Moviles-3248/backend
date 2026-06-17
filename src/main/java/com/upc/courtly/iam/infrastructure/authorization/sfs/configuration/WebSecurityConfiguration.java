@@ -113,6 +113,7 @@ public class WebSecurityConfiguration {
                 .sessionManagement( customizer -> customizer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                     .requestMatchers(
+                        "/health",
                         "/api/v1/authentication/**",
                         "/api/v1/auth/**",
                                 "/v3/api-docs/**",
