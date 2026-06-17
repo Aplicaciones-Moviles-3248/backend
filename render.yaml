@@ -1,6 +1,6 @@
 databases:
   - name: courtly-db
-    databaseName: courtly
+    databaseName: courtly_zriz
     user: courtly_user
     plan: free
     region: ohio
@@ -18,7 +18,9 @@ services:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
       - key: DB_URL
-        value: jdbc:postgresql://dpg-d80260rtqb8s73fp9u2g-a.ohio-postgres.render.com/courtly?sslmode=require
+        fromDatabase:
+          name: courtly-db
+          property: internalConnectionString
       - key: DB_USERNAME
         fromDatabase:
           name: courtly-db
