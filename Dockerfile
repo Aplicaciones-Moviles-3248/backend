@@ -20,4 +20,4 @@ COPY --from=build /workspace/target/*.jar /app/app.jar
 EXPOSE 8080
 
 # Render provides environment variables at runtime; pass only what can't be read from properties
-ENTRYPOINT ["sh", "-c", "exec java -Dserver.port=${PORT:-8080} -Dspring.profiles.active=prod -Dspring.datasource.url=${DATABASE_URL} -Dauthorization.jwt.secret=${AUTHORIZATION_JWT_SECRET} -Dauthorization.jwt.expiration.days=${AUTHORIZATION_JWT_EXPIRATION_DAYS} -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "exec java -Dserver.port=${PORT:-8080} -Dspring.profiles.active=prod -Dspring.datasource.url=${DB_URL} -Dspring.datasource.username=${DB_USERNAME} -Dspring.datasource.password=${DB_PASSWORD} -Dauthorization.jwt.secret=${AUTHORIZATION_JWT_SECRET} -Dauthorization.jwt.expiration.days=${AUTHORIZATION_JWT_EXPIRATION_DAYS} -jar /app/app.jar"]
