@@ -19,6 +19,6 @@ COPY --from=build /workspace/target/*.jar /app/app.jar
 
 EXPOSE 8080
 
-# Render provides $PORT at runtime; use shell form to allow env expansion
-ENTRYPOINT ["sh","-c","java -Dserver.port=$PORT -jar /app/app.jar"]
+# Render provides environment variables at runtime; pass only what can't be read from properties
+ENTRYPOINT ["sh","-c","java -Dserver.port=$PORT -Dspring.profiles.active=$SPRING_PROFILES_ACTIVE -Dauthorization.jwt.secret=$AUTHORIZATION_JWT_SECRET -Dauthorization.jwt.expiration.days=$AUTHORIZATION_JWT_EXPIRATION_DAYS -jar /app/app.jar"]
 
