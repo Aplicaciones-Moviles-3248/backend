@@ -4,6 +4,7 @@ import com.upc.courtly.iam.infrastructure.tokens.jwt.BearerTokenService;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.time.DateUtils;
 import org.slf4j.Logger;
@@ -15,7 +16,10 @@ import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
+import java.util.HexFormat;
 import java.util.function.Function;
 
 /**
@@ -38,6 +42,31 @@ public class TokenServiceImpl implements BearerTokenService {
 
     @Value("${authorization.jwt.expiration.days}")
     private int expirationDays;
+
+    /**
+     * Logs a non-reversible fingerprint of the signing key at startup.
+     * <p>
+     *     This makes it possible to verify, from the deployment logs, that every running
+     *     instance signs and validates tokens with the same key. A mismatch in this
+     *     fingerprint across restarts or instances explains 401 responses where the
+     *     backend rejects its own freshly issued token.
+     * </p>
+     */
+    @PostConstruct
+    public void logSigningKeyFingerprint() {
+        if (secret == null || secret.isBlank()) {
+            LOGGER.error("JWT secret is not configured. Tokens cannot be validated. " +
+                    "Set the AUTHORIZATION_JWT_SECRET environment variable.");
+            return;
+        }
+        try {
+            var digest = MessageDigest.getInstance("SHA-256").digest(secret.getBytes(StandardCharsets.UTF_8));
+            var fingerprint = HexFormat.of().formatHex(digest).substring(0, 12);
+            LOGGER.info("JWT signing key loaded. secretLength={} fingerprint={}", secret.length(), fingerprint);
+        } catch (NoSuchAlgorithmException e) {
+            LOGGER.warn("Could not compute JWT key fingerprint: {}", e.getMessage());
+        }
+    }
 
     /**
      * This method generates a JWT token from an authentication object
@@ -134,12 +163,24 @@ public class TokenServiceImpl implements BearerTokenService {
     }
 
     /**
-     * Get the signing key
+     * Get the signing key.
+     * <p>
+     *     The configured secret is normalized to a fixed 256-bit key by hashing it with
+     *     SHA-256. This guarantees a valid HS256 key regardless of the configured secret
+     *     length (avoiding {@code WeakKeyException} for short secrets) and is fully
+     *     deterministic, so signing and validation always derive the exact same key.
+     * </p>
      * @return SecretKey the signing key
      */
     private SecretKey getSigningKey() {
-        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
-        return Keys.hmacShaKeyFor(keyBytes);
+        try {
+            var keyBytes = MessageDigest.getInstance("SHA-256")
+                    .digest(secret.getBytes(StandardCharsets.UTF_8));
+            return Keys.hmacShaKeyFor(keyBytes);
+        } catch (NoSuchAlgorithmException e) {
+            // SHA-256 is guaranteed to be available on every JVM; fall back to raw bytes.
+            return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        }
     }
 
     private boolean isTokenPresentIn(String authorizationParameter) {
