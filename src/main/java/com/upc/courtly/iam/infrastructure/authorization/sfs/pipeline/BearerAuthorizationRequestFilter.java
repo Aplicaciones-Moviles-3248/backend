@@ -55,17 +55,20 @@ public class BearerAuthorizationRequestFilter extends OncePerRequestFilter {
         }
         try {
             String token = tokenService.getBearerTokenFrom(request);
-            LOGGER.info("Token: {}", token);
-            if (token != null && tokenService.validateToken(token)) {
-                String username = tokenService.getUsernameFromToken(token);
-                var userDetails = userDetailsService.loadUserByUsername(username);
-                SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationTokenBuilder.build(userDetails, request));
-            } else {
-                LOGGER.info("Token is not valid");
+            if (token != null) {
+                if (tokenService.validateToken(token)) {
+                    String username = tokenService.getUsernameFromToken(token);
+                    var userDetails = userDetailsService.loadUserByUsername(username);
+                    SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationTokenBuilder.build(userDetails, request));
+                } else {
+                    // A present-but-invalid token is a real failure (expired, or signed with a
+                    // different key than this instance validates with). Log it so the cause is
+                    // visible in the deployment logs instead of surfacing as an opaque 401.
+                    LOGGER.warn("Rejected bearer token for {}: token failed validation", path);
+                }
             }
-
         } catch (Exception e) {
-            LOGGER.error("Cannot set user authentication: {}", e.getMessage());
+            LOGGER.error("Cannot set user authentication for {}: {}", path, e.getMessage());
         }
         filterChain.doFilter(request, response);
     }
