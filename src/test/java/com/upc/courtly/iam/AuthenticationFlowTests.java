@@ -40,7 +40,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("local")
-class AuthenticationFlowIT {
+class AuthenticationFlowTests {
 
     @Autowired
     private MockMvc mockMvc;

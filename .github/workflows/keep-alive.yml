@@ -1,0 +1,30 @@
+name: Keep backend awake
+
+# El backend corre en el plan gratuito de Render, que suspende el servicio tras
+# ~15 minutos de inactividad. El primer request despues de dormir tarda 30-90s y
+# provoca timeouts en la app (ej: "no se pudo iniciar sesion"). Este workflow lo
+# mantiene caliente con un ping periodico.
+on:
+  schedule:
+    # Cada ~10 minutos. GitHub puede demorar las corridas programadas bajo carga.
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake backend
+        run: |
+          URL="https://courtly-backend.onrender.com/swagger-ui/index.html"
+          for attempt in 1 2 3; do
+            code=$(curl -s -m 120 -o /dev/null -w '%{http_code}' "$URL" || echo "000")
+            echo "Attempt $attempt -> HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "Backend is awake."
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::warning::Backend did not return 200 after retries (may be a cold start in progress)."
