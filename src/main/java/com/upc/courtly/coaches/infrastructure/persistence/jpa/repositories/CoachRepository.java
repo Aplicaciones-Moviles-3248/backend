@@ -9,6 +9,7 @@ import java.util.Optional;
 @Repository
 public interface CoachRepository extends JpaRepository<Coach, Long> {
     boolean existsByName(String name);
+    Optional<Coach> findByName(String name);
     Optional<Coach> findByUserId(Long userId);
     boolean existsByUserId(Long userId);
 }

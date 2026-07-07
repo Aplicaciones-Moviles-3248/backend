@@ -152,7 +152,12 @@ public class DemoDataSeeder implements CommandLineRunner {
                 .orElseGet(() -> roleRepository.save(new Role(Roles.ROLE_USER)));
         var user = userRepository.findByUsername(username).orElseGet(() ->
                 userRepository.save(new User(username, hashingService.encode(DEMO_PASSWORD), List.of(role))));
-        return userProfileRepository.findByUserId(user.getId()).orElseGet(() ->
+        var existingByUser = userProfileRepository.findByUserId(user.getId());
+        if (existingByUser.isPresent()) {
+            return existingByUser.get();
+        }
+        // email is unique; avoid a duplicate-key crash-loop if it was already taken.
+        return userProfileRepository.findByEmail(email).orElseGet(() ->
                 userProfileRepository.save(new UserProfile(name, email, phone, user)));
     }
 
@@ -161,7 +166,14 @@ public class DemoDataSeeder implements CommandLineRunner {
                 .orElseGet(() -> roleRepository.save(new Role(Roles.ROLE_INSTRUCTOR)));
         var user = userRepository.findByUsername(username).orElseGet(() ->
                 userRepository.save(new User(username, hashingService.encode(DEMO_PASSWORD), List.of(role))));
-        return coachRepository.findByUserId(user.getId()).orElseGet(() ->
+        var existingByUser = coachRepository.findByUserId(user.getId());
+        if (existingByUser.isPresent()) {
+            return existingByUser.get();
+        }
+        // Coach.name is unique; a coach with this display name may already exist under a
+        // different account (e.g. manually created before this seeder ran) — reuse it
+        // rather than crash-looping the whole app on a duplicate-key error every boot.
+        return coachRepository.findByName(name).orElseGet(() ->
                 coachRepository.save(new Coach(name, expertise, phone, user)));
     }
 
