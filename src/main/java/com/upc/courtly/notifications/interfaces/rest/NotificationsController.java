@@ -1,5 +1,6 @@
 package com.upc.courtly.notifications.interfaces.rest;
 
+import com.upc.courtly.coaches.infrastructure.persistence.jpa.repositories.CoachRepository;
 import com.upc.courtly.iam.interfaces.acl.AuthenticatedContextFacade;
 import com.upc.courtly.notifications.domain.model.commands.DeleteNotificationCommand;
 import com.upc.courtly.notifications.domain.model.commands.MarkNotificationAsReadCommand;
@@ -14,6 +15,7 @@ import com.upc.courtly.notifications.interfaces.rest.resources.NotificationResou
 import com.upc.courtly.notifications.interfaces.rest.resources.UpdateNotificationResource;
 import com.upc.courtly.notifications.interfaces.rest.transform.NotificationResourceFromEntityAssembler;
 import com.upc.courtly.notifications.interfaces.rest.transform.UpdateNotificationCommandFromResourceAssembler;
+import com.upc.courtly.users.infrastructure.persistence.jpa.repositories.UserProfileRepository;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -30,13 +32,18 @@ public class NotificationsController {
     private final NotificationCommandService notificationCommandService;
     private final NotificationQueryService notificationQueryService;
     private final AuthenticatedContextFacade authenticatedContextFacade;
+    private final CoachRepository coachRepository;
+    private final UserProfileRepository userProfileRepository;
 
     public NotificationsController(NotificationCommandService notificationCommandService,
                                    NotificationQueryService notificationQueryService,
-                                   AuthenticatedContextFacade authenticatedContextFacade) {
+                                   AuthenticatedContextFacade authenticatedContextFacade,
+                                   CoachRepository coachRepository, UserProfileRepository userProfileRepository) {
         this.notificationCommandService = notificationCommandService;
         this.notificationQueryService = notificationQueryService;
         this.authenticatedContextFacade = authenticatedContextFacade;
+        this.coachRepository = coachRepository;
+        this.userProfileRepository = userProfileRepository;
     }
 
     @PostMapping
@@ -83,10 +90,24 @@ public class NotificationsController {
 
     @GetMapping("/me")
     public ResponseEntity<List<NotificationResource>> getMyNotifications() {
-        var currentUserProfile = authenticatedContextFacade.getAuthenticatedUserProfile();
-        var notifications = notificationQueryService.handle(new GetNotificationsByUserIdQuery(currentUserProfile.getId())).stream()
+        var user = authenticatedContextFacade.getAuthenticatedUser();
+        Long profileId;
+
+        var coachProfile = coachRepository.findByUserId(user.getId());
+        if (coachProfile.isPresent()) {
+            profileId = coachProfile.get().getId();
+        } else {
+            var userProfile = userProfileRepository.findByUserId(user.getId())
+                    .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "No se encontró un perfil asociado a esta cuenta."));
+            profileId = userProfile.getId();
+        }
+
+        var notifications = notificationQueryService.handle(new GetNotificationsByUserIdQuery(profileId))
+                .stream()
                 .map(NotificationResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
+
         return ResponseEntity.ok(notifications);
     }
 
@@ -102,9 +123,21 @@ public class NotificationsController {
 
     @GetMapping("/me/unread-count")
     public ResponseEntity<NotificationCountResource> getMyUnreadCount() {
-        var currentUserProfile = authenticatedContextFacade.getAuthenticatedUserProfile();
-        var unreadCount = notificationQueryService.handle(new CountUnreadNotificationsByUserIdQuery(currentUserProfile.getId()));
-        return ResponseEntity.ok(new NotificationCountResource(currentUserProfile.getId(), unreadCount));
+        var user = authenticatedContextFacade.getAuthenticatedUser();
+        Long profileId;
+
+        var coachProfile = coachRepository.findByUserId(user.getId());
+        if (coachProfile.isPresent()) {
+            profileId = coachProfile.get().getId();
+        } else {
+            var userProfile = userProfileRepository.findByUserId(user.getId())
+                    .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "No se encontró un perfil asociado."));
+            profileId = userProfile.getId();
+        }
+
+        var unreadCount = notificationQueryService.handle(new CountUnreadNotificationsByUserIdQuery(profileId));
+        return ResponseEntity.ok(new NotificationCountResource(profileId, unreadCount));
     }
 
     @PutMapping("/{id}")
