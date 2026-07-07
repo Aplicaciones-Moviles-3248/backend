@@ -10,6 +10,8 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+
 @Component
 public class AuthenticatedContextFacade {
     private final UserRepository userRepository;
@@ -38,6 +40,16 @@ public class AuthenticatedContextFacade {
         var user = getAuthenticatedUser();
         return userProfileRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("Authenticated user does not have a user profile"));
+    }
+
+    /**
+     * Returns the authenticated user's profile if it exists, empty otherwise.
+     * Unlike {@link #getAuthenticatedUserProfile()} this does not throw when the
+     * profile is missing, so callers can return a proper 404 instead of a 500.
+     */
+    public Optional<UserProfile> findAuthenticatedUserProfile() {
+        var user = getAuthenticatedUser();
+        return userProfileRepository.findByUserId(user.getId());
     }
 
     public Coach getAuthenticatedCoachProfile() {

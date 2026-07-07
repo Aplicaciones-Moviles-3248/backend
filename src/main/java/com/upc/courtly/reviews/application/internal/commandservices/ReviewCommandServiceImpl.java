@@ -13,6 +13,10 @@ import com.upc.courtly.trainingsessions.domain.model.valueobjects.TrainingSessio
 import com.upc.courtly.trainingsessions.infrastructure.persistence.jpa.repositories.TrainingSessionRepository;
 import com.upc.courtly.users.infrastructure.persistence.jpa.repositories.UserProfileRepository;
 import org.springframework.stereotype.Service;
+import com.upc.courtly.notifications.domain.model.aggregates.Notification;
+import com.upc.courtly.notifications.domain.model.valueobjects.NotificationType;
+import com.upc.courtly.notifications.infrastructure.persistence.jpa.repositories.NotificationRepository;
+import com.upc.courtly.coaches.infrastructure.persistence.jpa.repositories.CoachRepository;
 
 import java.util.Optional;
 
@@ -22,13 +26,18 @@ public class ReviewCommandServiceImpl implements ReviewCommandService {
     private final UserProfileRepository userProfileRepository;
     private final BookingRepository bookingRepository;
     private final TrainingSessionRepository trainingSessionRepository;
+    private final NotificationRepository notificationRepository;
+    private final CoachRepository coachRepository;
 
     public ReviewCommandServiceImpl(ReviewRepository reviewRepository, UserProfileRepository userProfileRepository,
-                                    BookingRepository bookingRepository, TrainingSessionRepository trainingSessionRepository) {
+                                    BookingRepository bookingRepository, TrainingSessionRepository trainingSessionRepository,
+                                    NotificationRepository notificationRepository, CoachRepository coachRepository) {
         this.reviewRepository = reviewRepository;
         this.userProfileRepository = userProfileRepository;
         this.bookingRepository = bookingRepository;
         this.trainingSessionRepository = trainingSessionRepository;
+        this.notificationRepository = notificationRepository;
+        this.coachRepository = coachRepository;
     }
 
     @Override
@@ -60,6 +69,37 @@ public class ReviewCommandServiceImpl implements ReviewCommandService {
         var review = new Review(command.score(), command.comment(), command.type(), command.targetId(),
                 command.targetType(), command.bookingId(), command.trainingSessionId(), user);
         var createdReview = reviewRepository.save(review);
+        notificationRepository.save(
+                new Notification(
+                        "Review submitted",
+                        "Your review was published successfully.",
+                        NotificationType.REVIEW_SUBMITTED,
+                        false,
+                        "REVIEW",
+                        createdReview.getId(),
+                        user
+                )
+        );
+        if (command.targetType() == ReviewTargetType.COACH) {
+            var coach = coachRepository.findById(command.targetId())
+                    .orElseThrow(() -> new IllegalArgumentException("Coach not found"));
+            if (coach.getUser() != null) {
+                userProfileRepository.findByUserId(coach.getUser().getId())
+                        .ifPresent(coachProfile ->
+                                notificationRepository.save(
+                                        new Notification(
+                                                "New review received",
+                                                user.getName() + " left you a review.",
+                                                NotificationType.REVIEW_RECEIVED,
+                                                false,
+                                                "REVIEW",
+                                                createdReview.getId(),
+                                                coachProfile
+                                        )
+                                )
+                        );
+            }
+        }
         return Optional.of(createdReview);
     }
 
