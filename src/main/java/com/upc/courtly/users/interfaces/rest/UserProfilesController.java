@@ -51,7 +51,9 @@ public class UserProfilesController {
 
     @GetMapping("/me")
     public ResponseEntity<UserProfileResource> getMyUserProfile() {
-        var currentUserProfile = authenticatedContextFacade.getAuthenticatedUserProfile();
+        var currentUserProfile = authenticatedContextFacade.findAuthenticatedUserProfile()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Authenticated user does not have a user profile yet"));
         return ResponseEntity.ok(UserProfileResourceFromEntityAssembler.toResourceFromEntity(currentUserProfile));
     }
 
