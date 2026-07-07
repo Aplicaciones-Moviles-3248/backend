@@ -114,6 +114,7 @@ public class WebSecurityConfiguration {
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                     .requestMatchers(
                         "/health",
+                        "/error",
                         "/api/v1/authentication/**",
                         "/api/v1/auth/**",
                                 "/v3/api-docs/**",
