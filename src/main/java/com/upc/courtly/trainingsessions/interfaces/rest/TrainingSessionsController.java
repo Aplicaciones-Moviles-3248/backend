@@ -50,10 +50,13 @@ public class TrainingSessionsController {
 
     @GetMapping
     public ResponseEntity<List<TrainingSessionResource>> getAllTrainingSessions() {
-        var currentUserProfile = authenticatedContextFacade.getAuthenticatedUserProfile();
+        var currentUserProfile = safeCurrentUserProfile();
         var currentCoach = safeCurrentCoach();
+        if (currentUserProfile == null && currentCoach == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No player or coach profile found for this account");
+        }
         var sessions = trainingSessionQueryService.handle(new GetAllTrainingSessionsQuery()).stream()
-                .filter(session -> session.getPlayer().getId().equals(currentUserProfile.getId())
+                .filter(session -> (currentUserProfile != null && session.getPlayer().getId().equals(currentUserProfile.getId()))
                         || (currentCoach != null && session.getCoach().getId().equals(currentCoach.getId())))
                 .map(TrainingSessionResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
@@ -62,11 +65,11 @@ public class TrainingSessionsController {
 
     @GetMapping("/{id}")
     public ResponseEntity<TrainingSessionResource> getTrainingSessionById(@PathVariable Long id) {
-        var currentUserProfile = authenticatedContextFacade.getAuthenticatedUserProfile();
+        var currentUserProfile = safeCurrentUserProfile();
         var currentCoach = safeCurrentCoach();
         var session = trainingSessionQueryService.handle(new GetTrainingSessionByIdQuery(id));
         session.ifPresent(value -> {
-            boolean owner = value.getPlayer().getId().equals(currentUserProfile.getId())
+            boolean owner = (currentUserProfile != null && value.getPlayer().getId().equals(currentUserProfile.getId()))
                     || (currentCoach != null && value.getCoach().getId().equals(currentCoach.getId()));
             if (!owner) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only access your own training sessions");
@@ -104,11 +107,11 @@ public class TrainingSessionsController {
 
     @PostMapping("/{id}/cancel")
     public ResponseEntity<TrainingSessionResource> cancelTrainingSession(@PathVariable Long id, @RequestBody(required = false) TrainingSessionActionResource resource) {
-        var currentUserProfile = authenticatedContextFacade.getAuthenticatedUserProfile();
+        var currentUserProfile = safeCurrentUserProfile();
         var currentCoach = safeCurrentCoach();
         var existingSession = trainingSessionQueryService.handle(new GetTrainingSessionByIdQuery(id))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Training session not found"));
-        boolean owner = existingSession.getPlayer().getId().equals(currentUserProfile.getId())
+        boolean owner = (currentUserProfile != null && existingSession.getPlayer().getId().equals(currentUserProfile.getId()))
                 || (currentCoach != null && existingSession.getCoach().getId().equals(currentCoach.getId()));
         if (!owner) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only cancel your own training sessions");
@@ -133,11 +136,11 @@ public class TrainingSessionsController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteTrainingSession(@PathVariable Long id) {
-        var currentUserProfile = authenticatedContextFacade.getAuthenticatedUserProfile();
+        var currentUserProfile = safeCurrentUserProfile();
         var currentCoach = safeCurrentCoach();
         var existingSession = trainingSessionQueryService.handle(new GetTrainingSessionByIdQuery(id))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Training session not found"));
-        boolean owner = existingSession.getPlayer().getId().equals(currentUserProfile.getId())
+        boolean owner = (currentUserProfile != null && existingSession.getPlayer().getId().equals(currentUserProfile.getId()))
                 || (currentCoach != null && existingSession.getCoach().getId().equals(currentCoach.getId()));
         if (!owner) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own training sessions");
@@ -149,6 +152,14 @@ public class TrainingSessionsController {
     private com.upc.courtly.coaches.domain.model.aggregates.Coach safeCurrentCoach() {
         try {
             return authenticatedContextFacade.getAuthenticatedCoachProfile();
+        } catch (IllegalStateException exception) {
+            return null;
+        }
+    }
+
+    private com.upc.courtly.users.domain.model.aggregates.UserProfile safeCurrentUserProfile() {
+        try {
+            return authenticatedContextFacade.getAuthenticatedUserProfile();
         } catch (IllegalStateException exception) {
             return null;
         }
